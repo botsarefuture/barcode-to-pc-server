@@ -101,7 +101,7 @@ class Server:
         self.zeroconf.register_service(self.info)
 
         await self.runner.setup()
-        self.site = web.TCPSite(self.runner, port=57891, reuse_address=True, reuse_port=True)
+        self.site = web.TCPSite(self.runner, port=57891, reuse_address=True)
         self.logger.debug("start...")
         await self.site.start()
 
