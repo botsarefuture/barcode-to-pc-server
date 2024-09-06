@@ -1,32 +1,29 @@
 #!/usr/bin/env python3.7
-# python3.7 -m pip install zeroconf aiohttp
+# Install dependencies with: python3.7 -m pip install zeroconf aiohttp
 
 import logging
 import asyncio
 from barcode_to_pc.barcode_to_pc import Server
 
-
-async def main(server):
-    loop = asyncio.get_running_loop()
-
+async def main(server: Server):
     queue = asyncio.Queue()
 
-    async def test():
+    async def print_codes():
         while True:
             code = await queue.get()
             print(code)
 
-    await server.start(queue, loop=loop)
-
-    await test()
-
+    await server.start(queue)
+    await print_codes()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     server = Server()
+
     try:
         asyncio.run(main(server))
-    except KeyboardInterrupt as e:
-        asyncio.run(server.stop())
+    except KeyboardInterrupt:
+        logging.info("Shutting down server due to KeyboardInterrupt")
     finally:
-        pass
+        # Ensure the server stops gracefully
+        asyncio.run(server.stop())
