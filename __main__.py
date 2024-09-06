@@ -5,6 +5,7 @@ import logging
 import asyncio
 from barcode_to_pc.barcode_to_pc import Server
 
+
 async def main(server: Server):
     queue = asyncio.Queue()
 
@@ -15,6 +16,7 @@ async def main(server: Server):
 
     await server.start(queue)
     await print_codes()
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

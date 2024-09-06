@@ -5,49 +5,60 @@ import json
 from zeroconf import ServiceInfo, Zeroconf
 import socket
 
+
 async def websocket_handler(request):
     ws = web.WebSocketResponse(autoping=True)
     await ws.prepare(request)
 
-    queue: asyncio.Queue = request.app['queue']
+    queue: asyncio.Queue = request.app["queue"]
 
     async for msg in ws:
         if msg.type == WSMsgType.TEXT:
             data = json.loads(msg.data)
-            action = data.get('action')
+            action = data.get("action")
 
             request.app.logger.debug(f"Received action: {action}")
 
             response = {}
 
-            if action == 'helo':
-                request.app.logger.debug(f"helo {data.get('version')} {data.get('deviceName')} {data.get('deviceId')}")
+            if action == "helo":
+                request.app.logger.debug(
+                    f"helo {data.get('version')} {data.get('deviceName')} {data.get('deviceId')}"
+                )
                 response = {
-                    'action': 'helo',
-                    'version': "0.9",
+                    "action": "helo",
+                    "version": "0.9",
                     # 'outputProfiles': [ ... ]
                 }
-            elif action == 'ping':
+            elif action == "ping":
                 request.app.logger.debug("ping")
-                response = {'action': 'pong'}
-            elif action == 'getVersion':
+                response = {"action": "pong"}
+            elif action == "getVersion":
                 request.app.logger.debug("getVersion")
-            elif action == 'deleteScan':
-                request.app.logger.debug(f"deleteScan {data.get('scanSessionId')} {data.get('scan')}")
-            elif action == 'deleteScanSessions':
-                request.app.logger.debug(f"deleteScanSessions {data.get('scanSessionIds')}")
-            elif action == 'putScanSessions':
-                request.app.logger.debug(f"putScanSessions {data.get('sendKeystrokes')} {data.get('deviceId')}")
-                for session in data.get('scanSessions', []):
-                    request.app.logger.debug(f"{session['id']} {session['name']} {session['date']} {session['selected']}")
-                    for scanning in session.get('scannings', []):
+            elif action == "deleteScan":
+                request.app.logger.debug(
+                    f"deleteScan {data.get('scanSessionId')} {data.get('scan')}"
+                )
+            elif action == "deleteScanSessions":
+                request.app.logger.debug(
+                    f"deleteScanSessions {data.get('scanSessionIds')}"
+                )
+            elif action == "putScanSessions":
+                request.app.logger.debug(
+                    f"putScanSessions {data.get('sendKeystrokes')} {data.get('deviceId')}"
+                )
+                for session in data.get("scanSessions", []):
+                    request.app.logger.debug(
+                        f"{session['id']} {session['name']} {session['date']} {session['selected']}"
+                    )
+                    for scanning in session.get("scannings", []):
                         request.app.logger.debug(
                             f"{scanning['id']} {scanning['repeated']} {scanning['date']} {scanning['text']} {scanning['displayValue']}"
                         )
-                        queue.put_nowait(scanning['text'])
-            elif action == 'updateScanSession':
+                        queue.put_nowait(scanning["text"])
+            elif action == "updateScanSession":
                 request.app.logger.debug(f"updateScanSession {data}")
-            elif action == 'clearScanSessions':
+            elif action == "clearScanSessions":
                 request.app.logger.debug(f"clearScanSessions {data}")
             else:
                 request.app.logger.debug(f"Unknown action: {data}")
@@ -57,32 +68,35 @@ async def websocket_handler(request):
             await ws.send_str(json.dumps(response))
 
         elif msg.type == WSMsgType.ERROR:
-            request.app.logger.info(f"WebSocket connection closed with exception: {ws.exception()}")
+            request.app.logger.info(
+                f"WebSocket connection closed with exception: {ws.exception()}"
+            )
 
     request.app.logger.info("WebSocket connection closed")
 
     return ws
+
 
 class Server:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         # self.logger.setLevel(logging.DEBUG)
 
-        self.TYPE = '_http._tcp.local.'
+        self.TYPE = "_http._tcp.local."
         self.info = ServiceInfo(
             type_=self.TYPE,
             name=f"barcode-to-pc-server.{self.TYPE}",
             server=socket.gethostname(),
             port=57891,
-            properties={'path': '/'}
+            properties={"path": "/"},
         )
         self.zeroconf = Zeroconf()
 
     async def start(self, queue: asyncio.Queue, loop=None):
         self.logger.debug("Starting server")
         app = web.Application(logger=self.logger, loop=loop)
-        app['queue'] = queue
-        app.add_routes([web.get('/', websocket_handler)])
+        app["queue"] = queue
+        app.add_routes([web.get("/", websocket_handler)])
 
         self.runner = web.AppRunner(app)
         self.logger.info("Registering service...")
